@@ -12,13 +12,29 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const TITLE = "Split — Train Honest";
+const DESCRIPTION =
+  "An adaptive running coach that rewrites your plan based on how you actually ran.";
+
 export const metadata: Metadata = {
-  title: "Split — Train Honest",
-  description: "An adaptive running coach that rewrites your plan based on how you actually ran.",
+  metadataBase: new URL("https://split-nu-eight.vercel.app"),
+  title: TITLE,
+  description: DESCRIPTION,
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Split",
+  },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    siteName: "Split",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
   },
 };
 
