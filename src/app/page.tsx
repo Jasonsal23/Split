@@ -20,10 +20,13 @@ export default async function LandingPage() {
         Your training plan, rewritten by how you actually ran.
       </h1>
       <Link
-        href="/login"
+        href="/tour"
         className="mt-8 flex min-h-[44px] items-center rounded-lg bg-zinc-100 px-6 py-3 text-base font-medium text-zinc-950"
       >
         Get started
+      </Link>
+      <Link href="/login" className="mt-4 text-sm text-zinc-500 underline">
+        Log in
       </Link>
     </main>
   );

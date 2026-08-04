@@ -134,6 +134,13 @@ export default async function SettingsPage() {
           Help & contact
         </h2>
         <Link
+          href="/tour"
+          className="mt-3 flex min-h-[44px] w-full items-center justify-between rounded-lg border border-zinc-700 px-3 text-sm font-medium text-zinc-200"
+        >
+          Replay the tour
+          <span className="text-zinc-500">→</span>
+        </Link>
+        <Link
           href="/help"
           className="mt-3 flex min-h-[44px] w-full items-center justify-between rounded-lg border border-zinc-700 px-3 text-sm font-medium text-zinc-200"
         >
