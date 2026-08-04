@@ -70,7 +70,10 @@ export default async function AppLayout({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-24 pt-4">
+      <main
+        className="mx-auto w-full max-w-lg flex-1 px-4 pt-4"
+        style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}
+      >
         <OfflineSyncStatus />
         {children}
       </main>
