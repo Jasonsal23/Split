@@ -47,8 +47,12 @@ export async function updateSession(request: NextRequest) {
   );
 
   if (!user && isProtected) {
+    // Send to the tour, not straight to login — a shared link to any
+    // in-app page (e.g. /today) is often the first thing a stranger ever
+    // sees, and they should get the "what is this" tour before a bare
+    // sign-in form. The tour's final step still offers Log in / Sign up.
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/tour";
     return NextResponse.redirect(url);
   }
 
