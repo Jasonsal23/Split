@@ -41,7 +41,7 @@ export default async function AppLayout({
   return (
     <div
       className="flex flex-col"
-      style={{ height: "calc(100dvh - env(safe-area-inset-top))" }}
+      style={{ height: "calc(var(--app-vh, 100dvh) - env(safe-area-inset-top))" }}
     >
       <header className="shrink-0 border-b border-zinc-800 px-4 py-3">
         <div className="mx-auto flex max-w-lg items-center justify-between">

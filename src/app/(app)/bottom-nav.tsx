@@ -19,10 +19,10 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="shrink-0 border-t border-zinc-800 bg-zinc-950"
+      className="shrink-0 border-t border-zinc-800 bg-zinc-950 px-2"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="relative mx-auto flex max-w-lg px-2">
+      <div className="relative mx-auto flex max-w-lg">
         {activeIndex !== -1 && (
           <div
             className="absolute inset-y-1 w-1/5 rounded-md bg-zinc-900 transition-transform duration-200 ease-out"

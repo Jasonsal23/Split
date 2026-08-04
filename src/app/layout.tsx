@@ -53,6 +53,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         className="flex min-h-full flex-col bg-zinc-950 text-zinc-100"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
+        <script
+          // iOS reports an incorrect 100dvh on the very first paint after a
+          // standalone-PWA launch, then corrects it on the first touch/scroll
+          // — measuring the real height in JS up front avoids that jump.
+          dangerouslySetInnerHTML={{
+            __html: `(function(){function setAppVh(){document.documentElement.style.setProperty('--app-vh', window.innerHeight + 'px');}setAppVh();window.addEventListener('resize', setAppVh);window.addEventListener('orientationchange', setAppVh);})();`,
+          }}
+        />
         {children}
       </body>
     </html>
