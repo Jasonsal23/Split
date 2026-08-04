@@ -5,14 +5,7 @@ import { getAccent } from "@/lib/accent-colors";
 import type { Profile } from "@/lib/types";
 import Logo from "@/components/logo";
 import OfflineSyncStatus from "./offline-sync-status";
-
-const NAV_ITEMS = [
-  { href: "/today", label: "Today" },
-  { href: "/plan", label: "Plan" },
-  { href: "/progress", label: "Progress" },
-  { href: "/coach", label: "Coach" },
-  { href: "/settings", label: "Profile" },
-];
+import BottomNav from "./bottom-nav";
 
 export default async function AppLayout({
   children,
@@ -82,19 +75,7 @@ export default async function AppLayout({
         {children}
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 border-t border-zinc-800 bg-zinc-950">
-        <div className="mx-auto flex max-w-lg justify-between px-2">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex min-h-[44px] flex-1 items-center justify-center text-xs font-medium text-zinc-400 hover:text-zinc-100"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      </nav>
+      <BottomNav />
     </div>
   );
 }
