@@ -39,8 +39,11 @@ export default async function AppLayout({
   const accent = getAccent(profile?.accent_color);
 
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="border-b border-zinc-800 px-4 py-3">
+    <div
+      className="flex flex-col"
+      style={{ height: "calc(100dvh - env(safe-area-inset-top))" }}
+    >
+      <header className="shrink-0 border-b border-zinc-800 px-4 py-3">
         <div className="mx-auto flex max-w-lg items-center justify-between">
           <Link href="/today" className="flex items-center gap-2">
             <Logo className="h-6 w-6" />
@@ -70,10 +73,7 @@ export default async function AppLayout({
         </div>
       </header>
 
-      <main
-        className="mx-auto w-full max-w-lg flex-1 px-4 pt-4"
-        style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}
-      >
+      <main className="mx-auto w-full max-w-lg flex-1 overflow-y-auto px-4 pb-8 pt-4">
         <OfflineSyncStatus />
         {children}
       </main>
