@@ -1,8 +1,10 @@
 import { endOfWeek, format, startOfWeek, subWeeks } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 import { rollingEf } from "@/lib/training/ef";
 import { convertMilesForDisplay } from "@/lib/units";
 import { sortGoalsByRaceDate } from "@/lib/goals";
+import { getUserTimeZone } from "@/lib/timezone";
 import type { FitnessSnapshot, Goal, Run } from "@/lib/types";
 import ProgressCharts from "./progress-charts";
 
@@ -32,7 +34,7 @@ export default async function ProgressPage() {
     );
   }
 
-  const now = new Date();
+  const now = toZonedTime(new Date(), await getUserTimeZone());
   const historyStartIso = format(
     startOfWeek(subWeeks(now, WEEKS_OF_HISTORY - 1), { weekStartsOn: 1 }),
     "yyyy-MM-dd",

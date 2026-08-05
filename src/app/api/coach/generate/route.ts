@@ -1,5 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { addDays, differenceInCalendarDays, format, startOfWeek, subWeeks } from "date-fns";
+import {
+  addDays,
+  differenceInCalendarDays,
+  format,
+  parseISO,
+  startOfWeek,
+  subWeeks,
+} from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { COACH_MODEL, COACH_SYSTEM_PROMPT, type CoachPayload } from "@/lib/coach/prompt";
@@ -15,6 +23,7 @@ import {
 } from "@/lib/training/safety";
 import { trainingPaces } from "@/lib/training/vdot";
 import { createClient } from "@/lib/supabase/server";
+import { getUserTimeZone } from "@/lib/timezone";
 import { DAYS_OF_WEEK } from "@/lib/types";
 
 const CONTEXT_ERROR_MESSAGES = {
@@ -32,7 +41,8 @@ export async function POST() {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
-  const contextResult = await buildSnapshotContext(supabase, user.id);
+  const timeZone = await getUserTimeZone();
+  const contextResult = await buildSnapshotContext(supabase, user.id, timeZone);
   if (!contextResult.ok) {
     return NextResponse.json(
       { error: CONTEXT_ERROR_MESSAGES[contextResult.reason] },
@@ -42,11 +52,11 @@ export async function POST() {
   const { goal, upcomingGoals, baseline, runs, currentWeeklyMiles, snapshot, efTrendPct } =
     contextResult.context;
 
-  const today = new Date();
+  const today = toZonedTime(new Date(), timeZone);
   const weekStartDate = startOfWeek(today, { weekStartsOn: 1 });
   const weekStart = format(weekStartDate, "yyyy-MM-dd");
 
-  const raceDate = new Date(goal.race_date);
+  const raceDate = parseISO(goal.race_date);
   const weeksRemaining = weeksToRace(today, raceDate);
   const blockStart = new Date(goal.created_at);
   const totalBlockWeeks = Math.max(1, weeksToRace(blockStart, raceDate));
@@ -55,7 +65,7 @@ export async function POST() {
   const phase = determinePhase(totalBlockWeeks, weeksRemaining, isMarathon);
 
   const last7 = runs.filter(
-    (r) => differenceInCalendarDays(today, new Date(r.run_date)) < 7,
+    (r) => differenceInCalendarDays(today, parseISO(r.run_date)) < 7,
   );
   const hadRoughHardRun = last7.some(
     (r) => r.rpe >= 8 && (r.felt === "rough" || r.felt === "bad"),
@@ -78,7 +88,7 @@ export async function POST() {
     const weekEnd = startOfWeek(subWeeks(today, i - 1), { weekStartsOn: 1 });
     const total = runs
       .filter((r) => {
-        const d = new Date(r.run_date);
+        const d = parseISO(r.run_date);
         return d >= weekStart && d < weekEnd;
       })
       .reduce((s, r) => s + r.distance_mi, 0);
@@ -183,7 +193,7 @@ export async function POST() {
   // returns dates from the wrong week, re-anchor by weekday offset rather
   // than trusting its absolute date.
   const remappedWorkouts = coach.week.workouts.map((w) => {
-    const original = new Date(w.scheduled_date);
+    const original = parseISO(w.scheduled_date);
     const originalWeekStart = startOfWeek(original, { weekStartsOn: 1 });
     const offsetDays = differenceInCalendarDays(original, originalWeekStart);
     return {
@@ -220,7 +230,7 @@ export async function POST() {
   const clampedWorkouts = sortedWorkouts.map((w) => {
     if (!isHardRunType(w.run_type)) return w;
 
-    const date = new Date(w.scheduled_date);
+    const date = parseISO(w.scheduled_date);
     const adjacentToPrevHard =
       prevHardDate !== null && differenceInCalendarDays(date, prevHardDate) === 1;
     const overLimit = hardCount >= 2;
@@ -301,7 +311,7 @@ export async function POST() {
     return NextResponse.json({ error: workoutsError.message }, { status: 500 });
   }
 
-  const snapshotResult = await persistSnapshot(supabase, user.id, snapshot);
+  const snapshotResult = await persistSnapshot(supabase, user.id, snapshot, timeZone);
   if ("error" in snapshotResult) {
     return NextResponse.json({ error: snapshotResult.error }, { status: 500 });
   }

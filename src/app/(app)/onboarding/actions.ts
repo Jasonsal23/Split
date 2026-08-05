@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -9,6 +10,7 @@ import {
   computeFitnessSnapshot,
   type RunForLoad,
 } from "@/lib/training/snapshot";
+import { getUserTimeZone } from "@/lib/timezone";
 import type { RunType } from "@/lib/types";
 
 const optionalNumber = z.preprocess(
@@ -124,8 +126,8 @@ export async function completeOnboarding(formData: FormData) {
   });
 
   if (effort) {
-    const since = new Date();
-    since.setDate(since.getDate() - 28);
+    const timeZone = await getUserTimeZone();
+    const since = subDays(toZonedTime(new Date(), timeZone), 28);
 
     const { data: recentRuns } = await supabase
       .from("runs")
@@ -150,7 +152,7 @@ export async function completeOnboarding(formData: FormData) {
       .from("fitness_snapshots")
       .insert({
         user_id: user.id,
-        snapshot_date: format(new Date(), "yyyy-MM-dd"),
+        snapshot_date: format(toZonedTime(new Date(), timeZone), "yyyy-MM-dd"),
         vdot: snapshot.vdot,
         predicted_race_sec: Math.round(snapshot.predictedRaceSec),
         weekly_miles: snapshot.weeklyMiles,

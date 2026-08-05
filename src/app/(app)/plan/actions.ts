@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { buildSnapshotContext, persistSnapshot } from "@/lib/coach/snapshot-context";
 import { createClient } from "@/lib/supabase/server";
+import { getUserTimeZone } from "@/lib/timezone";
 
 const updateRunSchema = z.object({
   run_id: z.string().min(1),
@@ -52,9 +53,10 @@ export async function updateRun(formData: FormData) {
   }
 
   // The edited stats can change the fitness numbers — refresh for free, no AI call.
-  const contextResult = await buildSnapshotContext(supabase, user.id);
+  const timeZone = await getUserTimeZone();
+  const contextResult = await buildSnapshotContext(supabase, user.id, timeZone);
   if (contextResult.ok) {
-    await persistSnapshot(supabase, user.id, contextResult.context.snapshot);
+    await persistSnapshot(supabase, user.id, contextResult.context.snapshot, timeZone);
   }
 
   revalidatePath("/plan");

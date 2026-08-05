@@ -58,8 +58,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           // iOS reports an incorrect 100dvh on the very first paint after a
           // standalone-PWA launch, then corrects it on the first touch/scroll
           // — measuring the real height in JS up front avoids that jump.
+          // Also stores the visitor's IANA timezone in a cookie: the server's
+          // clock is UTC, not the athlete's, so every server-side "what day
+          // is it" computation reads this back via src/lib/timezone.ts rather
+          // than trusting a bare `new Date()`.
           dangerouslySetInnerHTML={{
-            __html: `(function(){function setAppVh(){document.documentElement.style.setProperty('--app-vh', window.innerHeight + 'px');}setAppVh();window.addEventListener('resize', setAppVh);window.addEventListener('orientationchange', setAppVh);})();`,
+            __html: `(function(){function setAppVh(){document.documentElement.style.setProperty('--app-vh', window.innerHeight + 'px');}setAppVh();window.addEventListener('resize', setAppVh);window.addEventListener('orientationchange', setAppVh);try{var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;if(tz)document.cookie='tz='+tz+';path=/;max-age=31536000;samesite=lax';}catch(e){}})();`,
           }}
         />
         {children}

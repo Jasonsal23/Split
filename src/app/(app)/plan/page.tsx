@@ -7,16 +7,18 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  isSameDay,
   isSameMonth,
-  isToday,
   startOfMonth,
   startOfWeek,
   subMonths,
   subWeeks,
 } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 import { formatPace } from "@/lib/format";
 import { formatDistance } from "@/lib/units";
+import { getUserTimeZone } from "@/lib/timezone";
 import type { PlanWeek, Run, RunType, Workout } from "@/lib/types";
 import { computeDayStatus, type PlanWeekRange } from "./day-status";
 
@@ -39,11 +41,13 @@ export default async function PlanPage({
   const { view: viewParam, month: monthParam, week: weekParam } = await searchParams;
   const view = viewParam === "week" ? "week" : "month";
 
+  const zonedNow = toZonedTime(new Date(), await getUserTimeZone());
+
   const anchorDate = monthParam
     ? new Date(`${monthParam}-01T00:00:00`)
     : weekParam
       ? new Date(`${weekParam}T00:00:00`)
-      : new Date();
+      : zonedNow;
 
   const monthStart = startOfMonth(anchorDate);
   const monthEnd = endOfMonth(anchorDate);
@@ -61,7 +65,7 @@ export default async function PlanPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const todayWeekStartIso = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const todayWeekStartIso = format(startOfWeek(zonedNow, { weekStartsOn: 1 }), "yyyy-MM-dd");
 
   const [
     { data: profile },
@@ -132,8 +136,8 @@ export default async function PlanPage({
       ? `/plan?view=week&week=${format(addWeeks(weekStart, 1), "yyyy-MM-dd")}`
       : `/plan?view=month&month=${format(addMonths(monthStart, 1), "yyyy-MM")}`;
 
-  const todayMonthStr = format(startOfMonth(new Date()), "yyyy-MM");
-  const todayWeekStr = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const todayMonthStr = format(startOfMonth(zonedNow), "yyyy-MM");
+  const todayWeekStr = format(startOfWeek(zonedNow, { weekStartsOn: 1 }), "yyyy-MM-dd");
   const todayHref =
     view === "week"
       ? `/plan?view=week&week=${todayWeekStr}`
@@ -210,7 +214,7 @@ export default async function PlanPage({
             const iso = format(day, "yyyy-MM-dd");
             const workout = workoutsByDate.get(iso);
             const dayRuns = runsByDate.get(iso) ?? [];
-            const today = isToday(day);
+            const today = isSameDay(day, zonedNow);
 
             const status = computeDayStatus({
               iso,
@@ -278,7 +282,7 @@ export default async function PlanPage({
               const workout = workoutsByDate.get(iso);
               const dayRuns = runsByDate.get(iso) ?? [];
               const inMonth = isSameMonth(day, monthStart);
-              const today = isToday(day);
+              const today = isSameDay(day, zonedNow);
 
               const status = computeDayStatus({
                 iso,

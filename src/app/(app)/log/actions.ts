@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { buildSnapshotContext, persistSnapshot } from "@/lib/coach/snapshot-context";
 import { createClient } from "@/lib/supabase/server";
+import { getUserTimeZone } from "@/lib/timezone";
 
 const logRunSchema = z.object({
   run_date: z.string().min(1),
@@ -67,9 +68,10 @@ export async function logRun(formData: FormData) {
 
   // Best-effort: refresh the fitness snapshot with pure math, no AI call.
   // A missing goal/baseline just means there's nothing to compute yet.
-  const contextResult = await buildSnapshotContext(supabase, user.id);
+  const timeZone = await getUserTimeZone();
+  const contextResult = await buildSnapshotContext(supabase, user.id, timeZone);
   if (contextResult.ok) {
-    await persistSnapshot(supabase, user.id, contextResult.context.snapshot);
+    await persistSnapshot(supabase, user.id, contextResult.context.snapshot, timeZone);
   }
 
   revalidatePath("/log");

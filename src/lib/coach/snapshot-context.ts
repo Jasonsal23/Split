@@ -1,4 +1,5 @@
-import { differenceInCalendarDays, format, subDays, subWeeks } from "date-fns";
+import { differenceInCalendarDays, format, parseISO, subDays, subWeeks } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sortGoalsByRaceDate } from "@/lib/goals";
 import { efTrendPct as computeEfTrendPct, rollingEf } from "@/lib/training/ef";
@@ -38,6 +39,7 @@ export type SnapshotContextResult =
 export async function buildSnapshotContext(
   supabase: SupabaseServerClient,
   userId: string,
+  timeZone: string,
 ): Promise<SnapshotContextResult> {
   const { data: activeGoals } = await supabase
     .from("goals")
@@ -57,7 +59,7 @@ export async function buildSnapshotContext(
     .maybeSingle();
   if (!baseline) return { ok: false, reason: "no_baseline" };
 
-  const today = new Date();
+  const today = toZonedTime(new Date(), timeZone);
   const sixtyDaysAgo = format(subDays(today, 60), "yyyy-MM-dd");
   const { data: recentRuns } = await supabase
     .from("runs")
@@ -95,10 +97,10 @@ export async function buildSnapshotContext(
   if (!effort) return { ok: false, reason: "no_effort" };
 
   const last7 = runs.filter(
-    (r) => differenceInCalendarDays(today, new Date(r.run_date)) < 7,
+    (r) => differenceInCalendarDays(today, parseISO(r.run_date)) < 7,
   );
   const last28 = runs.filter(
-    (r) => differenceInCalendarDays(today, new Date(r.run_date)) < 28,
+    (r) => differenceInCalendarDays(today, parseISO(r.run_date)) < 28,
   );
   const currentWeeklyMiles = last7.reduce((s, r) => s + r.distance_mi, 0);
 
@@ -123,7 +125,7 @@ export async function buildSnapshotContext(
   const twoWeeksAgo = subWeeks(today, 2);
   const fourWeeksAgo = subWeeks(today, 4);
   const laterSamples = withHr
-    .filter((r) => new Date(r.run_date) >= twoWeeksAgo)
+    .filter((r) => parseISO(r.run_date) >= twoWeeksAgo)
     .map((r) => ({
       distanceMi: r.distance_mi,
       durationSec: r.duration_sec,
@@ -132,7 +134,7 @@ export async function buildSnapshotContext(
   const earlierSamples = withHr
     .filter(
       (r) =>
-        new Date(r.run_date) < twoWeeksAgo && new Date(r.run_date) >= fourWeeksAgo,
+        parseISO(r.run_date) < twoWeeksAgo && parseISO(r.run_date) >= fourWeeksAgo,
     )
     .map((r) => ({
       distanceMi: r.distance_mi,
@@ -165,12 +167,13 @@ export async function persistSnapshot(
   supabase: SupabaseServerClient,
   userId: string,
   snapshot: FitnessSnapshotResult,
+  timeZone: string,
 ): Promise<{ id: string } | { error: string }> {
   const { data, error } = await supabase
     .from("fitness_snapshots")
     .insert({
       user_id: userId,
-      snapshot_date: format(new Date(), "yyyy-MM-dd"),
+      snapshot_date: format(toZonedTime(new Date(), timeZone), "yyyy-MM-dd"),
       vdot: snapshot.vdot,
       predicted_race_sec: Math.round(snapshot.predictedRaceSec),
       weekly_miles: snapshot.weeklyMiles,

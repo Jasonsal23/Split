@@ -6,10 +6,12 @@ import {
   parseISO,
   startOfWeek,
 } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 import { formatDuration, formatPace } from "@/lib/format";
 import { formatDistance } from "@/lib/units";
 import { sortGoalsByRaceDate } from "@/lib/goals";
+import { getUserTimeZone } from "@/lib/timezone";
 import type { FitnessSnapshot, Goal, Run, Workout } from "@/lib/types";
 import Greeting from "./greeting";
 
@@ -53,7 +55,7 @@ export default async function TodayPage() {
     );
   }
 
-  const now = new Date();
+  const now = toZonedTime(new Date(), await getUserTimeZone());
   const todayIso = format(now, "yyyy-MM-dd");
   const weekStartIso = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
   const weekEndIso = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
