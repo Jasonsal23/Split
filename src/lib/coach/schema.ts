@@ -16,7 +16,10 @@ export const coachResponseSchema = z.object({
   week: z.object({
     target_miles: z.number().positive(),
     is_deload: z.boolean(),
-    workouts: z.array(coachWorkoutSchema).min(1),
+    // Can legitimately be empty: if generating later in the week means the
+    // athlete's preferred days have already passed, there may be nothing
+    // left to schedule until next week — see COACH_SYSTEM_PROMPT.
+    workouts: z.array(coachWorkoutSchema),
   }),
   focus: z.string().min(1),
   warnings: z.array(z.string()),

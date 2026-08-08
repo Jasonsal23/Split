@@ -14,7 +14,16 @@ export default function RegenerateButton() {
       const res = await fetch("/api/coach/generate", { method: "POST" });
       const body = await res.json();
       if (!res.ok) {
-        setError(body.error ?? "Failed to generate a plan.");
+        const detail = Array.isArray(body.details)
+          ? body.details
+              .map((d: { path: (string | number)[]; message: string }) =>
+                `${d.path.join(".")}: ${d.message}`,
+              )
+              .join("; ")
+          : null;
+        setError(
+          [body.error ?? "Failed to generate a plan.", detail].filter(Boolean).join(" — "),
+        );
         return;
       }
       router.refresh();

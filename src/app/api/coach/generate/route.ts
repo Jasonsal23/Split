@@ -294,19 +294,25 @@ export async function POST() {
     );
   }
 
-  const { error: workoutsError } = await supabase.from("workouts").insert(
-    finalWorkouts.map((w) => ({
-      user_id: user.id,
-      plan_week_id: planWeek.id as string,
-      scheduled_date: w.scheduled_date,
-      run_type: w.run_type,
-      target_distance_mi: w.target_distance_mi,
-      target_pace_low_s: w.target_pace_low_s,
-      target_pace_high_s: w.target_pace_high_s,
-      description: w.description,
-      status: "planned",
-    })),
-  );
+  // finalWorkouts can legitimately be empty (regenerating late in the week
+  // with no remaining preferred days) — an empty insert is a no-op to skip,
+  // not an error.
+  const { error: workoutsError } =
+    finalWorkouts.length > 0
+      ? await supabase.from("workouts").insert(
+          finalWorkouts.map((w) => ({
+            user_id: user.id,
+            plan_week_id: planWeek.id as string,
+            scheduled_date: w.scheduled_date,
+            run_type: w.run_type,
+            target_distance_mi: w.target_distance_mi,
+            target_pace_low_s: w.target_pace_low_s,
+            target_pace_high_s: w.target_pace_high_s,
+            description: w.description,
+            status: "planned",
+          })),
+        )
+      : { error: null };
   if (workoutsError) {
     return NextResponse.json({ error: workoutsError.message }, { status: 500 });
   }
