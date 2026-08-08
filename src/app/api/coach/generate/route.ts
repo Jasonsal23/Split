@@ -1,7 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import {
   addDays,
+  addWeeks,
   differenceInCalendarDays,
+  eachDayOfInterval,
   format,
   parseISO,
   startOfWeek,
@@ -24,7 +26,7 @@ import {
 import { trainingPaces } from "@/lib/training/vdot";
 import { createClient } from "@/lib/supabase/server";
 import { getUserTimeZone } from "@/lib/timezone";
-import { DAYS_OF_WEEK } from "@/lib/types";
+import { DAYS_OF_WEEK, type DayOfWeek } from "@/lib/types";
 
 const CONTEXT_ERROR_MESSAGES = {
   no_goal: "Set a goal before generating a plan.",
@@ -53,11 +55,38 @@ export async function POST() {
     contextResult.context;
 
   const today = toZonedTime(new Date(), timeZone);
-  const weekStartDate = startOfWeek(today, { weekStartsOn: 1 });
+
+  // Decide which week to actually plan: if any of the athlete's preferred
+  // days from today through the rest of this calendar week are still open
+  // (no logged run yet), keep filling out the current week. Otherwise —
+  // e.g. regenerating after the week's last preferred day is already done —
+  // there's nothing left to plan here, so plan next week instead of handing
+  // the AI a week with no runway and getting an empty result back.
+  const preferredDays = baseline.preferred_days ?? [...DAYS_OF_WEEK];
+  const weekStartDateThisWeek = startOfWeek(today, { weekStartsOn: 1 });
+  const weekEndThisWeek = addDays(weekStartDateThisWeek, 6);
+  const loggedDatesThisWeek = new Set(
+    runs
+      .filter(
+        (r) =>
+          r.run_date >= format(weekStartDateThisWeek, "yyyy-MM-dd") &&
+          r.run_date <= format(weekEndThisWeek, "yyyy-MM-dd"),
+      )
+      .map((r) => r.run_date),
+  );
+  const hasOpenDayThisWeek = eachDayOfInterval({ start: today, end: weekEndThisWeek }).some(
+    (d) =>
+      preferredDays.includes(format(d, "EEE").toLowerCase() as DayOfWeek) &&
+      !loggedDatesThisWeek.has(format(d, "yyyy-MM-dd")),
+  );
+
+  const weekStartDate = hasOpenDayThisWeek
+    ? weekStartDateThisWeek
+    : addWeeks(weekStartDateThisWeek, 1);
   const weekStart = format(weekStartDate, "yyyy-MM-dd");
 
   const raceDate = parseISO(goal.race_date);
-  const weeksRemaining = weeksToRace(today, raceDate);
+  const weeksRemaining = weeksToRace(weekStartDate, raceDate);
   const blockStart = new Date(goal.created_at);
   const totalBlockWeeks = Math.max(1, weeksToRace(blockStart, raceDate));
   const weeksIntoBlock = Math.max(1, totalBlockWeeks - weeksRemaining + 1);
@@ -128,7 +157,7 @@ export async function POST() {
     })),
     constraints: {
       days_per_week: baseline.days_per_week,
-      preferred_days: baseline.preferred_days ?? [...DAYS_OF_WEEK],
+      preferred_days: preferredDays,
       max_safe_miles: Math.round(maxSafeMiles * 10) / 10,
       injury_notes: baseline.injury_notes ?? "",
     },
