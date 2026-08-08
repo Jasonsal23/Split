@@ -232,6 +232,9 @@ export default async function TodayPage() {
           <p className="mt-1 text-sm text-zinc-400">
             {formatPace(todaysWorkout.target_pace_low_s, units)}–
             {formatPace(todaysWorkout.target_pace_high_s, units)}
+            {todaysWorkout.target_hr_low && todaysWorkout.target_hr_high && (
+              <> · {todaysWorkout.target_hr_low}–{todaysWorkout.target_hr_high} bpm</>
+            )}
           </p>
           <p className="mt-2 text-sm text-zinc-300">
             {todaysWorkout.description}

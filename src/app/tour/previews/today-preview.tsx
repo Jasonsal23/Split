@@ -57,7 +57,8 @@ export default function TodayPreview() {
         </p>
         <p className="mt-1 text-sm text-zinc-400">
           {formatPace(TOUR_TODAY_WORKOUT.targetPaceLowSec, units)}–
-          {formatPace(TOUR_TODAY_WORKOUT.targetPaceHighSec, units)}
+          {formatPace(TOUR_TODAY_WORKOUT.targetPaceHighSec, units)} ·{" "}
+          {TOUR_TODAY_WORKOUT.targetHrLow}–{TOUR_TODAY_WORKOUT.targetHrHigh} bpm
         </p>
         <p className="mt-2 text-sm text-zinc-300">{TOUR_TODAY_WORKOUT.description}</p>
       </div>

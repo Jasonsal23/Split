@@ -15,6 +15,12 @@ import { NextResponse } from "next/server";
 import { COACH_MODEL, COACH_SYSTEM_PROMPT, type CoachPayload } from "@/lib/coach/prompt";
 import { coachResponseSchema, type CoachResponse } from "@/lib/coach/schema";
 import { buildSnapshotContext, persistSnapshot } from "@/lib/coach/snapshot-context";
+import {
+  clampHrTarget,
+  estimateMaxHr,
+  heartRateZones,
+  hrZoneForRunType,
+} from "@/lib/training/heart-rate";
 import { determinePhase, weeksToRace } from "@/lib/training/periodization";
 import {
   clampLongRunMiles,
@@ -54,7 +60,34 @@ export async function POST() {
   const { goal, upcomingGoals, baseline, runs, currentWeeklyMiles, snapshot, efTrendPct } =
     contextResult.context;
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("resting_hr, max_hr, birth_year, date_of_birth")
+    .eq("id", user.id)
+    .single();
+
   const today = toZonedTime(new Date(), timeZone);
+
+  const maxHr = estimateMaxHr(
+    profile?.max_hr ?? null,
+    profile?.birth_year ?? null,
+    profile?.date_of_birth ?? null,
+    today,
+  );
+  const hrZones = heartRateZones(profile?.resting_hr ?? null, maxHr);
+  const recentEasyHrSamples = runs.filter(
+    (r) =>
+      r.avg_hr !== null &&
+      (r.run_type === "easy" || r.run_type === "long" || r.run_type === "recovery") &&
+      differenceInCalendarDays(today, parseISO(r.run_date)) <= 21,
+  );
+  const recentEasyAvgHr =
+    recentEasyHrSamples.length > 0
+      ? Math.round(
+          recentEasyHrSamples.reduce((sum, r) => sum + r.avg_hr!, 0) /
+            recentEasyHrSamples.length,
+        )
+      : null;
 
   // Decide which week to actually plan: if any of the athlete's preferred
   // days from today through the rest of this calendar week are still open
@@ -145,6 +178,19 @@ export async function POST() {
       ef_trend_pct: Math.round(efTrendPct * 10) / 10,
       acwr: Math.round(snapshot.acwr * 100) / 100,
     },
+    hr_context: {
+      resting_hr: profile?.resting_hr ?? null,
+      max_hr: maxHr,
+      recent_easy_avg_hr: recentEasyAvgHr,
+      computed_zones: hrZones
+        ? {
+            easy: { low_bpm: hrZones.easy.lowBpm, high_bpm: hrZones.easy.highBpm },
+            marathon: { low_bpm: hrZones.marathon.lowBpm, high_bpm: hrZones.marathon.highBpm },
+            threshold: { low_bpm: hrZones.threshold.lowBpm, high_bpm: hrZones.threshold.highBpm },
+            interval: { low_bpm: hrZones.interval.lowBpm, high_bpm: hrZones.interval.highBpm },
+          }
+        : null,
+    },
     last_4_weeks_miles: last4WeeksMiles,
     recent_runs: runs.slice(-10).map((r) => ({
       date: r.run_date,
@@ -220,14 +266,25 @@ export async function POST() {
 
   // Belt-and-suspenders: the model is told the real week, but if it still
   // returns dates from the wrong week, re-anchor by weekday offset rather
-  // than trusting its absolute date.
+  // than trusting its absolute date. HR targets get the same treatment as
+  // pace here — clamped against the athlete's real resting/max HR (or
+  // dropped to null if there's nothing to clamp against) rather than
+  // trusted outright.
   const remappedWorkouts = coach.week.workouts.map((w) => {
     const original = parseISO(w.scheduled_date);
     const originalWeekStart = startOfWeek(original, { weekStartsOn: 1 });
     const offsetDays = differenceInCalendarDays(original, originalWeekStart);
+    const clampedHr = clampHrTarget(
+      w.target_hr_low,
+      w.target_hr_high,
+      profile?.resting_hr ?? null,
+      maxHr,
+    );
     return {
       ...w,
       scheduled_date: format(addDays(weekStartDate, offsetDays), "yyyy-MM-dd"),
+      target_hr_low: clampedHr?.lowBpm ?? null,
+      target_hr_high: clampedHr?.highBpm ?? null,
     };
   });
 
@@ -265,11 +322,14 @@ export async function POST() {
     const overLimit = hardCount >= 2;
 
     if (adjacentToPrevHard || overLimit) {
+      const easyHr = hrZoneForRunType("easy", hrZones);
       return {
         ...w,
         run_type: "easy" as const,
         target_pace_low_s: Math.round(paces.easy.fastSecPerMi),
         target_pace_high_s: Math.round(paces.easy.slowSecPerMi),
+        target_hr_low: easyHr?.lowBpm ?? null,
+        target_hr_high: easyHr?.highBpm ?? null,
         description: `${w.description} (auto-adjusted to easy: too many/adjacent hard days this week)`,
       };
     }
@@ -337,6 +397,8 @@ export async function POST() {
             target_distance_mi: w.target_distance_mi,
             target_pace_low_s: w.target_pace_low_s,
             target_pace_high_s: w.target_pace_high_s,
+            target_hr_low: w.target_hr_low,
+            target_hr_high: w.target_hr_high,
             description: w.description,
             status: "planned",
           })),

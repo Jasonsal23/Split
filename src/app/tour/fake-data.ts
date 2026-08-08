@@ -25,6 +25,8 @@ export const TOUR_TODAY_WORKOUT = {
   targetDistanceMi: 6,
   targetPaceLowSec: 435, // 7:15/mi
   targetPaceHighSec: 450, // 7:30/mi
+  targetHrLow: 158,
+  targetHrHigh: 166,
   description: "2mi warmup, 4mi @ tempo effort, 1mi cooldown.",
 };
 

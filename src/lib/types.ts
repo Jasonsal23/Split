@@ -134,6 +134,8 @@ export interface Workout {
   target_distance_mi: number;
   target_pace_low_s: number;
   target_pace_high_s: number;
+  target_hr_low: number | null;
+  target_hr_high: number | null;
   description: string;
   status: WorkoutStatus;
   created_at: string;

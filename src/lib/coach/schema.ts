@@ -6,6 +6,10 @@ export const coachWorkoutSchema = z.object({
   target_distance_mi: z.number().positive(),
   target_pace_low_s: z.number().int().positive(),
   target_pace_high_s: z.number().int().positive(),
+  // Null when there isn't enough HR data to responsibly propose a target —
+  // clamped/validated in code before it's ever trusted, same as pace.
+  target_hr_low: z.number().int().positive().nullable(),
+  target_hr_high: z.number().int().positive().nullable(),
   description: z.string().min(1),
 });
 

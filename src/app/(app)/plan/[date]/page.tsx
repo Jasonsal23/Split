@@ -85,6 +85,9 @@ export default async function DayPage({
           <p className="mt-1 text-sm text-zinc-400">
             {formatPace(workout.target_pace_low_s, units)}–
             {formatPace(workout.target_pace_high_s, units)}
+            {workout.target_hr_low && workout.target_hr_high && (
+              <> · {workout.target_hr_low}–{workout.target_hr_high} bpm</>
+            )}
           </p>
           <p className="mt-2 text-sm text-zinc-300">{workout.description}</p>
           <p className="mt-3 text-xs capitalize text-zinc-500">
